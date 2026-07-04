@@ -1,0 +1,140 @@
+namespace:
+  create: true
+  name: products
+
+config:
+  nodeEnv: production
+  port: "4000"
+  redisUrl: redis://redis:6379
+  frontendOrigin: http://localhost:8080
+  viteApiUrl: http://localhost:8081
+
+postgres:
+  name: postgres
+  replicaCount: 1
+  image:
+    registry: localhost:5001
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: Always
+  containerPort: 5432
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  # Local defaults only. Override these values or provide your own Secret in non-local environments.
+  auth:
+    user: app
+    password: app_password
+    database: products_db
+  persistence:
+    enabled: true
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 512Mi
+    mountPath: /var/lib/postgresql/data
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 12
+  livenessProbe:
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 384Mi
+
+redis:
+  name: redis
+  replicaCount: 1
+  image:
+    registry: localhost:5001
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: Always
+  containerPort: 6379
+  service:
+    type: ClusterIP
+    port: 6379
+    targetPort: 6379
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 12
+  livenessProbe:
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+backend:
+  name: backend
+  replicaCount: 1
+  image:
+    registry: localhost:5001
+    repository: products-backend
+    tag: local
+    pullPolicy: Always
+  containerPort: 4000
+  service:
+    type: NodePort
+    port: 4000
+    targetPort: 4000
+    nodePort: 30081
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 12
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+frontend:
+  name: frontend
+  replicaCount: 1
+  image:
+    registry: localhost:5001
+    repository: products-frontend
+    tag: local
+    pullPolicy: Always
+  containerPort: 80
+  service:
+    type: NodePort
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

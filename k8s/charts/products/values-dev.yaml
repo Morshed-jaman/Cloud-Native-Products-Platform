@@ -1,0 +1,15 @@
+# Local kind overrides. The namespace is created by `helm install --create-namespace`
+# so this chart does not try to own it during dev installs.
+namespace:
+  create: false
+  name: products
+
+config:
+  frontendOrigin: http://localhost:8080
+  viteApiUrl: http://localhost:8081
+
+backend:
+  replicaCount: 2
+
+frontend:
+  replicaCount: 1

@@ -1,0 +1,10 @@
+Products has been installed into namespace {{ include "products.namespace" . }}.
+
+Frontend:
+  http://localhost:8080
+
+Backend health:
+  http://localhost:8081/health
+
+Check status:
+  kubectl get pods -n {{ include "products.namespace" . }}

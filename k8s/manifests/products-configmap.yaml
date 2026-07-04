@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: products-config
+  namespace: products
+data:
+  NODE_ENV: production
+  PORT: "4000"
+  REDIS_URL: redis://redis:6379
+  FRONTEND_ORIGIN: http://localhost:8080
+  VITE_API_URL: http://localhost:8081
