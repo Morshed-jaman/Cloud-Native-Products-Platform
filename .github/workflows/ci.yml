@@ -116,12 +116,13 @@ jobs:
       - name: Render Helm chart
         run: helm template products k8s/charts/products
 
-  docker-build:
-    name: docker-build
+  build-and-scan:
+    name: build-and-scan
     runs-on: ubuntu-latest
     needs:
       - backend-ci
       - frontend-ci
+      - helm-validate
 
     steps:
       - name: Checkout repository
@@ -136,8 +137,8 @@ jobs:
           context: ./backend
           platforms: linux/amd64
           push: false
+          load: true
           tags: products-backend:ci
-          outputs: type=docker,dest=/tmp/products-backend.tar
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -145,42 +146,10 @@ jobs:
           context: ./frontend
           platforms: linux/amd64
           push: false
+          load: true
           tags: products-frontend:ci
           build-args: |
             VITE_API_URL=http://localhost:8081
-          outputs: type=docker,dest=/tmp/products-frontend.tar
-
-      - name: Upload backend image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: products-backend-image
-          path: /tmp/products-backend.tar
-          retention-days: 1
-
-      - name: Upload frontend image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: products-frontend-image
-          path: /tmp/products-frontend.tar
-          retention-days: 1
-
-  security-scan:
-    name: security-scan
-    runs-on: ubuntu-latest
-    needs: docker-build
-
-    steps:
-      - name: Download built image artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: image-artifacts
-
-      - name: Load built images
-        run: |
-          docker load --input image-artifacts/products-backend-image/products-backend.tar
-          docker load --input image-artifacts/products-frontend-image/products-frontend.tar
-          docker image ls products-backend
-          docker image ls products-frontend
 
       - name: Scan backend image for critical vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
@@ -189,7 +158,7 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: '1'
           format: table
 
       - name: Scan frontend image for critical vulnerabilities
@@ -199,5 +168,5 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: '1'
           format: table
