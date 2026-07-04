@@ -7,6 +7,11 @@ metadata:
     {{- include "products.componentLabels" (dict "root" . "component" "postgres") | nindent 4 }}
 spec:
   replicas: {{ .Values.postgres.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "products.selectorLabels" (dict "root" . "component" "postgres") | nindent 6 }}
@@ -15,6 +20,8 @@ spec:
       labels:
         {{- include "products.componentLabels" (dict "root" . "component" "postgres") | nindent 8 }}
     spec:
+      securityContext:
+        {{- toYaml .Values.postgres.podSecurityContext | nindent 8 }}
       containers:
         - name: postgres
           image: {{ include "products.image" (dict "image" .Values.postgres.image) | quote }}
@@ -22,22 +29,9 @@ spec:
           ports:
             - name: postgres
               containerPort: {{ .Values.postgres.containerPort }}
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: POSTGRES_DB
+          envFrom:
+            - secretRef:
+                name: {{ include "products.dbSecretName" . }}
           readinessProbe:
             exec:
               command:
@@ -58,6 +52,12 @@ spec:
             periodSeconds: {{ .Values.postgres.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.postgres.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.postgres.livenessProbe.failureThreshold }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.postgres.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.postgres.resources | nindent 12 }}
           {{- if .Values.postgres.persistence.enabled }}

@@ -111,10 +111,10 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Lint Helm chart
-        run: helm lint k8s/charts/products
+        run: helm lint k8s/charts/products -f k8s/charts/products/values-dev.yaml
 
       - name: Render Helm chart
-        run: helm template products k8s/charts/products
+        run: helm template products k8s/charts/products -f k8s/charts/products/values-dev.yaml
 
   build-and-scan:
     name: build-and-scan

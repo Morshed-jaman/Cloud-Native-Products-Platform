@@ -94,8 +94,8 @@ kubectl rollout status deployment/frontend -n products
 ## Deploy with Helm
 
 ```powershell
-helm lint k8s/charts/products
-helm template products k8s/charts/products
+helm lint k8s/charts/products -f k8s/charts/products/values-dev.yaml
+helm template products k8s/charts/products -f k8s/charts/products/values-dev.yaml
 kubectl delete -f k8s/manifests/
 helm install products k8s/charts/products -n products --create-namespace -f k8s/charts/products/values-dev.yaml
 kubectl wait --for=condition=Ready pod --all -n products --timeout=240s
@@ -114,9 +114,10 @@ curl.exe -I http://localhost:8080
 ```
 
 The chart defaults are in `k8s/charts/products/values.yaml`. Local kind
-overrides live in `k8s/charts/products/values-dev.yaml`. The default Postgres
-credentials are for local development only; override them with a private values
-file, `--set`, or your own Secret in non-local environments.
+overrides live in `k8s/charts/products/values-dev.yaml`. The base chart does
+not contain a default Postgres password; provide one with a private values file,
+`--set postgres.auth.password=...`, or `--set postgres.auth.existingSecret=...`.
+The password in `values-dev.yaml` is a local-only throwaway value.
 
 Examples:
 
@@ -124,6 +125,7 @@ Examples:
 helm upgrade --install products k8s/charts/products -n products --create-namespace -f k8s/charts/products/values-dev.yaml
 helm upgrade products k8s/charts/products -n products -f k8s/charts/products/values-dev.yaml --set backend.replicaCount=2
 helm upgrade products k8s/charts/products -n products -f k8s/charts/products/values-dev.yaml --set backend.image.tag=local --set frontend.image.tag=local
+helm upgrade products k8s/charts/products -n products --set postgres.auth.existingSecret=my-real-secret
 ```
 
 `values-dev.yaml` is intentionally small so environment-specific settings are
@@ -175,6 +177,30 @@ If a pod fails, inspect it before changing the chart:
 ```powershell
 kubectl describe pod <pod-name> -n products
 kubectl logs <pod-name> -n products
+```
+
+## Security Controls
+
+The Helm chart includes NetworkPolicies, non-root pod/container security
+contexts, dropped Linux capabilities, read-only root filesystems where the
+images support them, and Pod Security Standard labels on chart-managed
+namespaces. See `docs/SECURITY.md` for the full posture and documented local
+development exceptions.
+
+For an existing local namespace created with `--create-namespace`, apply the Pod
+Security Standard labels once:
+
+```powershell
+kubectl label namespace products pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/enforce-version=latest pod-security.kubernetes.io/audit=restricted pod-security.kubernetes.io/warn=restricted --overwrite
+```
+
+kind's default CNI (`kindnet`) does not enforce NetworkPolicies. The policies are
+correctly defined and will be enforced in Calico/Cilium-based clusters. Installing
+Calico into kind is optional for local enforcement, but it is not installed here
+because it is heavier on RAM:
+
+```powershell
+# kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.2/manifests/calico.yaml
 ```
 
 ## Delete the cluster

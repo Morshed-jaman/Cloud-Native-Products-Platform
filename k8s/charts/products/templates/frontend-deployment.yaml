@@ -15,6 +15,8 @@ spec:
       labels:
         {{- include "products.componentLabels" (dict "root" . "component" "frontend") | nindent 8 }}
     spec:
+      securityContext:
+        {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
       containers:
         - name: frontend
           image: {{ include "products.image" (dict "image" .Values.frontend.image) | quote }}
@@ -22,5 +24,25 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.frontend.containerPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.frontend.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}

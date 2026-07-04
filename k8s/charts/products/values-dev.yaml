@@ -8,6 +8,11 @@ config:
   frontendOrigin: http://localhost:8080
   viteApiUrl: http://localhost:8081
 
+postgres:
+  auth:
+    # Dev-only throwaway password for the local kind cluster.
+    password: app_password
+
 backend:
   replicaCount: 2
 

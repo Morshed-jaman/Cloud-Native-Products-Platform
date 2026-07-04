@@ -66,8 +66,18 @@ Build a container image reference from registry/repository/tag values.
 {{- printf "%s-config" .Release.Name -}}
 {{- end -}}
 
-{{- define "products.secretName" -}}
-{{- printf "%s-secrets" .Release.Name -}}
+{{- define "products.dbSecretName" -}}
+{{- if .Values.postgres.auth.existingSecret -}}
+{{- .Values.postgres.auth.existingSecret -}}
+{{- else -}}
+{{- printf "%s-db-creds" .Release.Name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "products.validatePostgresAuth" -}}
+{{- if and (not .Values.postgres.auth.existingSecret) (not .Values.postgres.auth.password) -}}
+{{- fail "A postgres password or existingSecret must be provided" -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "products.postgresPvcName" -}}

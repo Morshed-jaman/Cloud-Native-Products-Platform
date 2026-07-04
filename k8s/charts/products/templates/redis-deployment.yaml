@@ -15,6 +15,8 @@ spec:
       labels:
         {{- include "products.componentLabels" (dict "root" . "component" "redis") | nindent 8 }}
     spec:
+      securityContext:
+        {{- toYaml .Values.redis.podSecurityContext | nindent 8 }}
       containers:
         - name: redis
           image: {{ include "products.image" (dict "image" .Values.redis.image) | quote }}
@@ -40,5 +42,21 @@ spec:
             periodSeconds: {{ .Values.redis.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.redis.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.redis.livenessProbe.failureThreshold }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.redis.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.redis.resources | nindent 12 }}
+          {{- if .Values.redis.persistence.enabled }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: {{ .Values.redis.persistence.mountPath }}
+          {{- end }}
+      {{- if .Values.redis.persistence.enabled }}
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+      {{- end }}

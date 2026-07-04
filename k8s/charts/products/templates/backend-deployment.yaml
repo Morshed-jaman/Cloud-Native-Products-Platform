@@ -15,21 +15,15 @@ spec:
       labels:
         {{- include "products.componentLabels" (dict "root" . "component" "backend") | nindent 8 }}
     spec:
+      securityContext:
+        {{- toYaml .Values.backend.podSecurityContext | nindent 8 }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "products.image" (dict "image" .Values.postgres.image) | quote }}
           imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: POSTGRES_USER
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: POSTGRES_DB
+          envFrom:
+            - secretRef:
+                name: {{ include "products.dbSecretName" . }}
           command:
             - sh
             - -c
@@ -38,6 +32,12 @@ spec:
                 echo "waiting for postgres"
                 sleep 2
               done
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
         - name: wait-for-redis
           image: {{ include "products.image" (dict "image" .Values.redis.image) | quote }}
           imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
@@ -49,6 +49,12 @@ spec:
                 echo "waiting for redis"
                 sleep 2
               done
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
       containers:
         - name: backend
           image: {{ include "products.image" (dict "image" .Values.backend.image) | quote }}
@@ -56,32 +62,11 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.backend.containerPort }}
-          env:
-            - name: PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "products.configName" . }}
-                  key: PORT
-            - name: NODE_ENV
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "products.configName" . }}
-                  key: NODE_ENV
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "products.secretName" . }}
-                  key: DATABASE_URL
-            - name: REDIS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "products.configName" . }}
-                  key: REDIS_URL
-            - name: FRONTEND_ORIGIN
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "products.configName" . }}
-                  key: FRONTEND_ORIGIN
+          envFrom:
+            - configMapRef:
+                name: {{ include "products.configName" . }}
+            - secretRef:
+                name: {{ include "products.dbSecretName" . }}
           readinessProbe:
             httpGet:
               path: {{ .Values.backend.readinessProbe.path }}
@@ -98,5 +83,17 @@ spec:
             periodSeconds: {{ .Values.backend.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.backend.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.backend.livenessProbe.failureThreshold }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.backend.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

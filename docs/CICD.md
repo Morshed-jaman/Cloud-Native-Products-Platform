@@ -9,18 +9,20 @@ within the free GitHub-hosted workflow and GHCR setup for a normal repository.
 
 `.github/workflows/ci.yml` runs on every push and pull request targeting `main`.
 
-It has five jobs:
+It has four jobs:
 
 - `backend-ci`: installs backend dependencies with Node.js 20, runs lint when a
   lint script exists, runs `npm test`, and runs `npm run build`.
 - `frontend-ci`: installs frontend dependencies with Node.js 20 and runs
   `npm run build`.
-- `helm-validate`: installs Helm, runs `helm lint k8s/charts/products`, and
-  renders the chart with `helm template products k8s/charts/products`.
-- `docker-build`: builds the backend and frontend Docker images for
-  `linux/amd64` without pushing them.
-- `security-scan`: scans the built images with Trivy and fails only when
-  CRITICAL vulnerabilities are found. Unfixed vulnerabilities are ignored.
+- `helm-validate`: installs Helm, runs
+  `helm lint k8s/charts/products -f k8s/charts/products/values-dev.yaml`, and
+  renders the chart with
+  `helm template products k8s/charts/products -f k8s/charts/products/values-dev.yaml`.
+- `build-and-scan`: builds the backend and frontend Docker images for
+  `linux/amd64` into the runner Docker daemon without pushing them, then scans
+  those local images with Trivy. The job fails only when CRITICAL
+  vulnerabilities are found. Unfixed vulnerabilities are ignored.
 
 ### Release
 
