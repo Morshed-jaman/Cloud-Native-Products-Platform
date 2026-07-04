@@ -15,6 +15,23 @@ jobs:
   backend-ci:
     name: backend-ci
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_password
+          POSTGRES_DB: products_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U app -d products_db"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=10
     defaults:
       run:
         working-directory: backend
@@ -41,7 +58,18 @@ jobs:
             echo "no lint script"
           fi
 
+      - name: Prepare test database
+        run: |
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" \
+            -e PGPASSWORD=app_password \
+            postgres:16-alpine \
+            psql -h 127.0.0.1 -U app -d products_db -f /migrations/001_create_products.sql
+
       - name: Run tests
+        env:
+          DATABASE_URL: postgresql://app:app_password@localhost:5432/products_db
+          REDIS_URL: redis://localhost:6379
         run: npm test
 
       - name: Build backend
